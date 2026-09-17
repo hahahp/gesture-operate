@@ -4,10 +4,49 @@
 
 现在还包含一个更偏电影/VR 风格的 **Spatial Canvas**：通过食指定位、拇指与食指捏合来抓取屏幕中的空间卡片，并支持双手缩放和旋转。
 
+项目现在还提供实验性的 **Desktop Spatial Control**：不显示摄像头预览，而是在整个 Windows 或 macOS 桌面上绘制一个点击穿透的空间光晕，通过手指位置和捏合操作当前应用。
+
+## Desktop Spatial Control（实验性）
+
+先安装依赖并进行无副作用自检：
+
+```bash
+python -m pip install -r requirements.txt
+python desktop_control.py --check
+```
+
+安全预览模式只显示全桌面光晕，不向系统发送输入：
+
+```bash
+python desktop_control.py --dry-run
+```
+
+程序默认暂停。张开手掌并保持一秒可以启用或再次暂停控制。也可以明确要求启动后立即启用：
+
+```bash
+python desktop_control.py --active
+```
+
+交互方式：
+
+- 移动食指：移动桌面空间光晕
+- 食指与拇指轻捏后松开：主操作（左键）
+- 连续轻捏两次：双击
+- 食指与拇指捏合并移动：拖动
+- 中指与拇指轻捏后松开：辅助操作（右键）
+- 张开手掌保持一秒：暂停或恢复
+- `Ctrl+C`：安全退出并恢复系统光标
+
+可用 `--hand left` 或 `--hand right` 指定控制手，`--camera 1` 切换摄像头。若不希望隐藏系统指针，可加入 `--show-system-cursor`。
+
+桌面控制分为跨平台手势核心和原生系统适配层。Windows 使用 Win32 输入，macOS 使用 Quartz；透明反馈层由 Qt 绘制。为了兼容不公开可访问性语义的应用，当前版本使用原生指针事件作为操作后端，但会隐藏系统指针，用户只看到空间光晕。
+
+macOS 首次运行需要在“系统设置 → 隐私与安全性”中允许摄像头和辅助功能权限。Windows/macOS 的锁屏、安全确认界面和部分独占全屏应用不允许普通程序控制。
+
 ## Spatial Canvas 体验版
 
 ```bash
-cd /Users/ping/ping_ws/gesture-operate
+cd gesture-operate
 .venv/bin/python spatial_demo.py
 ```
 
@@ -52,7 +91,7 @@ cd /Users/ping/ping_ws/gesture-operate
 项目已经使用本机 Python 3.9 创建了独立虚拟环境 `.venv`：
 
 ```bash
-cd /Users/ping/ping_ws/gesture-operate
+cd gesture-operate
 source .venv/bin/activate
 python app.py
 ```
@@ -90,7 +129,12 @@ python app.py
 ├── .venv/                         # 项目独立 Python 环境
 ├── models/gesture_recognizer.task # Google 官方预训练模型
 ├── app.py                         # 摄像头、识别、骨架与涂鸦逻辑
+├── desktop_control.py             # 全桌面空间光晕控制入口
+├── desktop_core.py                # 跨平台手势状态机
+├── desktop_overlay.py             # 点击穿透的透明反馈层
+├── desktop_platform.py            # Windows/macOS 原生输入适配
 ├── spatial_demo.py                # 捏合、拖动、缩放、旋转空间卡片
+├── tests/test_desktop_core.py     # 无桌面副作用的核心测试
 ├── requirements.txt               # Python 依赖
 └── README.md
 ```

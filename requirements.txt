@@ -3,3 +3,9 @@
 # gesture graph here (Drishti/Metal service initialization).
 mediapipe==0.10.21
 opencv-contrib-python==4.11.0.86
+PySide6==6.10.3
+
+# Native macOS input and Accessibility bridges. Environment markers keep them
+# out of Windows installations.
+pyobjc-framework-ApplicationServices==11.0; sys_platform == "darwin"
+pyobjc-framework-Quartz==11.0; sys_platform == "darwin"
