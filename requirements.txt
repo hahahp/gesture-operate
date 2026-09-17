@@ -1,0 +1,5 @@
+# 0.10.21 ships a Universal2 wheel that is compatible with the system Python 3.9
+# on this Apple Silicon Mac. MediaPipe 1.0.1 currently crashes while starting the
+# gesture graph here (Drishti/Metal service initialization).
+mediapipe==0.10.21
+opencv-contrib-python==4.11.0.86
