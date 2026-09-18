@@ -77,7 +77,7 @@ class DryRunBackend(DesktopBackend):
 class WindowsBackend(DesktopBackend):
     """Win32 input adapter.
 
-    The native cursor is hidden while a hand is controlling the spatial halo.
+    The native cursor is hidden while a hand is controlling the spatial skeleton.
     Win32 still receives conventional mouse events, which is the most broadly
     compatible fallback for custom-drawn and legacy applications.
     """

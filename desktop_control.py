@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Control the Windows or macOS desktop with a spatial hand halo."""
+"""Control the Windows or macOS desktop with a spatial hand skeleton."""
 
 from __future__ import annotations
 
@@ -90,6 +90,7 @@ def observation_from_result(result, width: int, height: int, preferred_hand: str
         middle_pinch_ratio=ratio(middle_tip),
         gesture=gesture,
         handedness=labels[selected],
+        landmarks=tuple((float(point.x), float(point.y)) for point in landmarks),
     )
 
 
@@ -141,7 +142,7 @@ class CameraWorker:
                 )
 
             last_timestamp = -1
-            with create_recognizer(self.model_path, on_result) as recognizer:
+            with create_recognizer(self.model_path, on_result, num_hands=1) as recognizer:
                 while not self.stop_event.is_set():
                     ok, frame = camera.read()
                     if not ok or frame is None:
@@ -209,12 +210,12 @@ def run_desktop(args) -> int:
     from PySide6.QtCore import QTimer
     from PySide6.QtWidgets import QApplication
 
-    from desktop_overlay import SpatialHaloOverlay
+    from desktop_overlay import HandSkeletonOverlay
 
     application = QApplication(sys.argv[:1])
     application.setApplicationName("Gesture Operate")
     application.setQuitOnLastWindowClosed(False)
-    overlay = SpatialHaloOverlay(application)
+    overlay = HandSkeletonOverlay(application)
     engine = DesktopGestureEngine(overlay.screen_area(), active=args.active)
     backend = create_backend(dry_run=args.dry_run)
     worker = CameraWorker(args.camera, args.model, not args.no_mirror, args.hand)
@@ -257,9 +258,10 @@ def run_desktop(args) -> int:
     application.aboutToQuit.connect(cleanup)
     signal.signal(signal.SIGINT, lambda _signal, _frame: application.quit())
     print("Gesture Operate is running without a camera preview.")
+    print("Tracking one hand and drawing its 21 MediaPipe landmarks on the desktop.")
     print("Hold an open palm for one second to pause/resume. Press Ctrl+C to quit.")
     if args.dry_run:
-        print("Dry-run mode: the halo is live, but no desktop input will be sent.")
+        print("Dry-run mode: the hand skeleton is live, but no desktop input will be sent.")
     return application.exec()
 
 

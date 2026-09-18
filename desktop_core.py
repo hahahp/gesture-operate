@@ -47,6 +47,7 @@ class HandObservation:
     middle_pinch_ratio: float
     gesture: str = ""
     handedness: str = ""
+    landmarks: Tuple[Point, ...] = ()
 
 
 class ActionKind(str, Enum):
@@ -73,6 +74,9 @@ class InteractionFrame:
     mode: str
     feedback: Optional[str]
     actions: Tuple[DesktopAction, ...]
+    landmarks: Tuple[Point, ...] = ()
+    gesture: str = ""
+    handedness: str = ""
 
 
 class PinchLatch:
@@ -153,6 +157,16 @@ class DesktopGestureEngine:
         )
         return self.position
 
+    def map_landmarks(self, observation: HandObservation, anchor: Point) -> Tuple[Point, ...]:
+        """Map the detected skeleton to the desktop and keep its index tip on the cursor."""
+        if not observation.landmarks:
+            return ()
+        mapped = tuple(self.map_position(point) for point in observation.landmarks)
+        index_tip = mapped[8] if len(mapped) > 8 else self.map_position((observation.x, observation.y))
+        offset_x = anchor[0] - index_tip[0]
+        offset_y = anchor[1] - index_tip[1]
+        return tuple((point[0] + offset_x, point[1] + offset_y) for point in mapped)
+
     def _toggle_from_open_palm(self, gesture: str, now: float) -> Optional[DesktopAction]:
         if gesture == "Open_Palm":
             if self.open_palm_started is None:
@@ -186,6 +200,7 @@ class DesktopGestureEngine:
             return InteractionFrame(self.position, False, self.active, "idle", feedback, tuple(actions))
 
         position = self.smooth_position(self.map_position((observation.x, observation.y)))
+        landmarks = self.map_landmarks(observation, position)
         toggle = self._toggle_from_open_palm(observation.gesture, now)
         if toggle is not None:
             self._cancel_gesture(actions)
@@ -225,7 +240,17 @@ class DesktopGestureEngine:
         if not self.active:
             self._cancel_gesture(actions)
             mode = "paused"
-            return InteractionFrame(position, True, self.active, mode, feedback, tuple(actions))
+            return InteractionFrame(
+                position,
+                True,
+                self.active,
+                mode,
+                feedback,
+                tuple(actions),
+                landmarks,
+                observation.gesture,
+                observation.handedness,
+            )
 
         if index_started:
             self.index_origin = position
@@ -273,4 +298,14 @@ class DesktopGestureEngine:
             mode = "primary_pinch"
         else:
             mode = "tracking"
-        return InteractionFrame(position, True, self.active, mode, feedback, tuple(actions))
+        return InteractionFrame(
+            position,
+            True,
+            self.active,
+            mode,
+            feedback,
+            tuple(actions),
+            landmarks,
+            observation.gesture,
+            observation.handedness,
+        )

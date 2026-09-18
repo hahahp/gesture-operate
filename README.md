@@ -4,7 +4,7 @@
 
 现在还包含一个更偏电影/VR 风格的 **Spatial Canvas**：通过食指定位、拇指与食指捏合来抓取屏幕中的空间卡片，并支持双手缩放和旋转。
 
-项目现在还提供实验性的 **Desktop Spatial Control**：不显示摄像头预览，而是在整个 Windows 或 macOS 桌面上绘制一个点击穿透的空间光晕，通过手指位置和捏合操作当前应用。
+项目现在还提供实验性的 **Desktop Spatial Control**：不显示摄像头预览，而是在整个 Windows 或 macOS 桌面上绘制一个点击穿透的 21 点手部骨架，通过手指位置和捏合操作当前应用。桌面模式只识别一只手，骨架旁会显示左右手、手势名称和当前交互状态。
 
 ## Desktop Spatial Control（实验性）
 
@@ -15,7 +15,7 @@ python -m pip install -r requirements.txt
 python desktop_control.py --check
 ```
 
-安全预览模式只显示全桌面光晕，不向系统发送输入：
+安全预览模式只显示全桌面手部骨架，不向系统发送输入：
 
 ```bash
 python desktop_control.py --dry-run
@@ -29,7 +29,7 @@ python desktop_control.py --active
 
 交互方式：
 
-- 移动食指：移动桌面空间光晕
+- 移动食指：移动桌面手部骨架与指针位置
 - 食指与拇指轻捏后松开：主操作（左键）
 - 连续轻捏两次：双击
 - 食指与拇指捏合并移动：拖动
@@ -39,7 +39,7 @@ python desktop_control.py --active
 
 可用 `--hand left` 或 `--hand right` 指定控制手，`--camera 1` 切换摄像头。若不希望隐藏系统指针，可加入 `--show-system-cursor`。
 
-桌面控制分为跨平台手势核心和原生系统适配层。Windows 使用 Win32 输入，macOS 使用 Quartz；透明反馈层由 Qt 绘制。为了兼容不公开可访问性语义的应用，当前版本使用原生指针事件作为操作后端，但会隐藏系统指针，用户只看到空间光晕。
+桌面控制分为跨平台手势核心和原生系统适配层。Windows 使用 Win32 输入，macOS 使用 Quartz；透明反馈层由 Qt 绘制。为了兼容不公开可访问性语义的应用，当前版本使用原生指针事件作为操作后端，但会隐藏系统指针，用户只看到映射到桌面的手部骨架。
 
 macOS 首次运行需要在“系统设置 → 隐私与安全性”中允许摄像头和辅助功能权限。Windows/macOS 的锁屏、安全确认界面和部分独占全屏应用不允许普通程序控制。
 
@@ -129,7 +129,7 @@ python app.py
 ├── .venv/                         # 项目独立 Python 环境
 ├── models/gesture_recognizer.task # Google 官方预训练模型
 ├── app.py                         # 摄像头、识别、骨架与涂鸦逻辑
-├── desktop_control.py             # 全桌面空间光晕控制入口
+├── desktop_control.py             # 全桌面手部骨架控制入口
 ├── desktop_core.py                # 跨平台手势状态机
 ├── desktop_overlay.py             # 点击穿透的透明反馈层
 ├── desktop_platform.py            # Windows/macOS 原生输入适配

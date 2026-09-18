@@ -1,17 +1,25 @@
-"""Transparent, click-through spatial halo rendered across the desktop."""
+"""Transparent, click-through hand skeleton rendered across the desktop."""
 
 from __future__ import annotations
 
-import math
 import time
 from dataclasses import dataclass
 from typing import List, Optional
 
 from PySide6.QtCore import QPointF, QRect, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainter, QPen, QRadialGradient
+from PySide6.QtGui import QColor, QFont, QPainter, QPen
 from PySide6.QtWidgets import QApplication, QWidget
 
 from desktop_core import InteractionFrame, Point, ScreenArea
+
+
+HAND_CONNECTIONS = (
+    (0, 1), (1, 2), (2, 3), (3, 4),
+    (0, 5), (5, 6), (6, 7), (7, 8),
+    (5, 9), (9, 10), (10, 11), (11, 12),
+    (9, 13), (13, 14), (14, 15), (15, 16),
+    (13, 17), (0, 17), (17, 18), (18, 19), (19, 20),
+)
 
 
 @dataclass
@@ -31,8 +39,8 @@ def virtual_desktop_geometry(application: QApplication) -> QRect:
     return geometry
 
 
-class SpatialHaloOverlay(QWidget):
-    """A non-activating overlay that only paints interaction feedback."""
+class HandSkeletonOverlay(QWidget):
+    """A non-activating overlay that paints the detected 21-point hand skeleton."""
 
     def __init__(self, application: QApplication) -> None:
         flags = (
@@ -52,6 +60,7 @@ class SpatialHaloOverlay(QWidget):
         self.frame = InteractionFrame(None, False, False, "paused", None, ())
         self.pulses: List[Pulse] = []
         self.status_changed_at = time.monotonic()
+        self.font_family = application.font().family()
         self.show()
 
     def screen_area(self) -> ScreenArea:
@@ -84,38 +93,49 @@ class SpatialHaloOverlay(QWidget):
             return QColor(150, 158, 176)
         return QColor(76, 226, 255)
 
-    def _draw_halo(self, painter: QPainter, now: float) -> None:
+    @staticmethod
+    def _rounded_pen(color: QColor, width: float) -> QPen:
+        pen = QPen(color, width)
+        pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        return pen
+
+    def _draw_hand_skeleton(self, painter: QPainter) -> None:
         frame = self.frame
-        if not frame.visible or frame.position is None:
+        if not frame.visible or len(frame.landmarks) < 21:
             return
-        center = self._local(frame.position)
+        points = tuple(self._local(point) for point in frame.landmarks)
         accent = self._accent(frame.mode)
-        pinched = frame.mode in ("primary_pinch", "secondary_pinch", "drag")
-        radius = 13.0 if pinched else 22.0
-        breathing = 1.5 * (1.0 + math.sin(now * 4.2))
-        radius += breathing if not pinched else 0.0
 
-        glow = QRadialGradient(center, radius + 24.0)
-        glow.setColorAt(0.0, QColor(accent.red(), accent.green(), accent.blue(), 72))
-        glow.setColorAt(0.46, QColor(accent.red(), accent.green(), accent.blue(), 34))
-        glow.setColorAt(1.0, QColor(accent.red(), accent.green(), accent.blue(), 0))
-        painter.setPen(Qt.PenStyle.NoPen)
-        painter.setBrush(glow)
-        painter.drawEllipse(center, radius + 24.0, radius + 24.0)
+        painter.setPen(self._rounded_pen(QColor(8, 12, 20, 205), 8.0))
+        for start, end in HAND_CONNECTIONS:
+            painter.drawLine(points[start], points[end])
+        painter.setPen(self._rounded_pen(accent, 3.5))
+        for start, end in HAND_CONNECTIONS:
+            painter.drawLine(points[start], points[end])
 
-        painter.setBrush(QColor(accent.red(), accent.green(), accent.blue(), 72 if pinched else 16))
-        painter.setPen(QPen(accent, 3.0))
-        painter.drawEllipse(center, radius, radius)
-        if frame.mode == "drag":
-            painter.setBrush(accent)
-            painter.drawEllipse(center, 5.0, 5.0)
-        elif frame.mode == "secondary_pinch":
-            painter.setFont(QFont("Sans Serif", 11, QFont.Weight.Bold))
-            painter.drawText(
-                QRectF(center.x() - 14, center.y() - 14, 28, 28),
-                Qt.AlignmentFlag.AlignCenter,
-                "•••",
-            )
+        fingertip_indices = {4, 8, 12, 16, 20}
+        painter.setPen(self._rounded_pen(QColor(8, 12, 20, 220), 2.0))
+        for index, point in enumerate(points):
+            radius = 6.5 if index in fingertip_indices else 4.2
+            color = accent
+            if frame.mode in ("primary_pinch", "drag") and index in (4, 8):
+                color = QColor(255, 214, 82)
+                radius = 8.0
+            elif frame.mode == "secondary_pinch" and index in (4, 12):
+                color = QColor(216, 116, 255)
+                radius = 8.0
+            painter.setBrush(color)
+            painter.drawEllipse(point, radius, radius)
+
+        label_parts = [part for part in (frame.handedness, frame.gesture) if part]
+        label_parts.append(frame.mode.replace("_", " ").upper())
+        label = "  •  ".join(label_parts)
+        wrist = points[0]
+        label_rect = QRectF(wrist.x() + 14.0, wrist.y() - 27.0, 300.0, 25.0)
+        painter.setPen(QColor(245, 247, 252))
+        painter.setFont(QFont(self.font_family, 10, QFont.Weight.DemiBold))
+        painter.drawText(label_rect, Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft, label)
 
     def _draw_pulses(self, painter: QPainter, now: float) -> None:
         alive: List[Pulse] = []
@@ -157,7 +177,7 @@ class SpatialHaloOverlay(QWidget):
             painter.setBrush(dot)
             painter.drawEllipse(QPointF(rect.left() + 19, rect.center().y()), 4.5, 4.5)
             painter.setPen(QColor(238, 241, 248))
-            painter.setFont(QFont("Sans Serif", 9, QFont.Weight.DemiBold))
+            painter.setFont(QFont(self.font_family, 9, QFont.Weight.DemiBold))
             painter.drawText(
                 QRectF(rect.left() + 31, rect.top(), rect.width() - 38, rect.height()),
                 Qt.AlignmentFlag.AlignVCenter | Qt.AlignmentFlag.AlignLeft,
@@ -171,6 +191,6 @@ class SpatialHaloOverlay(QWidget):
         now = time.monotonic()
         painter = QPainter(self)
         painter.setRenderHint(QPainter.RenderHint.Antialiasing, True)
-        self._draw_halo(painter, now)
+        self._draw_hand_skeleton(painter)
         self._draw_pulses(painter, now)
         self._draw_status(painter, now)

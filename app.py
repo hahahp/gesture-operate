@@ -195,7 +195,7 @@ def add_hud(
     )
 
 
-def create_recognizer(model_path: Path, result_callback=None):
+def create_recognizer(model_path: Path, result_callback=None, *, num_hands: int = 2):
     running_mode = (
         mp.tasks.vision.RunningMode.LIVE_STREAM
         if result_callback is not None
@@ -204,7 +204,7 @@ def create_recognizer(model_path: Path, result_callback=None):
     options = mp.tasks.vision.GestureRecognizerOptions(
         base_options=mp.tasks.BaseOptions(model_asset_path=str(model_path)),
         running_mode=running_mode,
-        num_hands=2,
+        num_hands=num_hands,
         min_hand_detection_confidence=0.5,
         min_hand_presence_confidence=0.5,
         min_tracking_confidence=0.5,

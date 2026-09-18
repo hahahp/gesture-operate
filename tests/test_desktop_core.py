@@ -3,8 +3,8 @@ import unittest
 from desktop_core import ActionKind, DesktopGestureEngine, HandObservation, ScreenArea
 
 
-def hand(x=0.5, y=0.5, index=1.0, middle=1.0, gesture=""):
-    return HandObservation(x, y, index, middle, gesture)
+def hand(x=0.5, y=0.5, index=1.0, middle=1.0, gesture="", landmarks=()):
+    return HandObservation(x, y, index, middle, gesture, landmarks=landmarks)
 
 
 class DesktopGestureEngineTests(unittest.TestCase):
@@ -16,6 +16,12 @@ class DesktopGestureEngineTests(unittest.TestCase):
         right, bottom = self.engine.map_position((0.93, 0.93))
         self.assertAlmostEqual(right, 1919)
         self.assertAlmostEqual(bottom, 1079)
+
+    def test_maps_full_hand_skeleton_and_aligns_index_tip(self):
+        landmarks = tuple((0.5, 0.5) for _ in range(21))
+        frame = self.engine.update(hand(landmarks=landmarks), 0.0)
+        self.assertEqual(len(frame.landmarks), 21)
+        self.assertEqual(frame.landmarks[8], frame.position)
 
     def test_short_index_pinch_clicks_on_release(self):
         self.engine.update(hand(), 0.0)
